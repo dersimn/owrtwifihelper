@@ -19,7 +19,7 @@ const config = require('yargs')
         name: 'owrtwifihelper',
         'mqtt-url': 'mqtt://127.0.0.1',
         'owrtwifi-prefix': 'owrtwifi',
-        'owrtwifi-timeout': 240
+        'owrtwifi-timeout': 300
     })
     .version()
     .help('help')
