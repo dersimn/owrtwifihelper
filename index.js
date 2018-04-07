@@ -49,21 +49,21 @@ mqtt.subscribe(config.owrtwifiPrefix + '/status/+/lastseen/epoch', (topic, messa
     let mac = wildcard[0];
 
     if (!(mac in wifiDevices)) {
-        wifiDevices.mac = {};
-        wifiDevices.mac.timer = new Timer(() => {
+        wifiDevices[mac] = {};
+        wifiDevices[mac].timer = new Timer(() => {
             mqtt.publish(config.name + '/status/' + mac, false);
         }, config.owrtwifiTimeout * 1000);
     }
 
-    wifiDevices.mac.timer.reset();
+    wifiDevices[mac].timer.reset();
     mqtt.publish(config.name + '/status/' + mac, true);
 });
 mqtt.subscribe(config.owrtwifiPrefix + '/status/+/event', (topic, message, wildcard) => {
     let mac = wildcard[0];
     
     if (!(mac in wifiDevices)) {
-        wifiDevices.mac = {};
-        wifiDevices.mac.timer = new Timer(() => {
+        wifiDevices[mac] = {};
+        wifiDevices[mac].timer = new Timer(() => {
             mqtt.publish(config.name + '/status/' + mac, false);
         }, config.owrtwifiTimeout * 1000);
     }
