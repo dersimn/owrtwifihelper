@@ -31,7 +31,7 @@ log.setLevel(config.verbosity);
 log.info(pkg.name + ' ' + pkg.version + ' starting');
 log.debug("loaded config: ", config);
 
-var wifiDevices = {};
+var timerList = {};
 
 log.info('mqtt trying to connect', config.mqttUrl);
 const mqtt = new MqttSmarthome(config.mqttUrl, {
@@ -45,27 +45,36 @@ mqtt.on('connect', () => {
     mqtt.publish(config.name + '/connected', '1', {retain: true});
 });
 
-mqtt.subscribe(config.owrtwifiPrefix + '/status/+/lastseen/epoch', (topic, message, wildcard) => {
+mqtt.subscribe(config.owrtwifiPrefix + '/status/+/lastseen/epoch', (topic, message, wildcard, packet) => {
     let mac = wildcard[0];
-    createTimeout(mac);
-    
-    wifiDevices[mac].timer.reset().timeout(config.owrtwifiTimeout * 1000);
-    mqtt.publish(config.name + '/status/' + mac, true);
+    let lastseen = message;
+    if (packet.retain) {
+        if ( (lastseen + config.owrtwifiTimeout) < (Math.floor(Date.now() / 1000)) ) {
+            // Last seen expired
+            mqtt.publish(config.name + '/status/' + mac, false, {retain: true});
+        }
+    } else {
+        handleTimeout(mac);
+    }
 });
 mqtt.subscribe(config.owrtwifiPrefix + '/status/+/event', (topic, message, wildcard) => {
     let mac = wildcard[0];
 
     if (message == 'new') {
-        createTimeout(mac);
-        mqtt.publish(config.name + '/status/' + mac, true);
+        handleTimeout(mac);
     }
 });
 
-function createTimeout(mac) {
-    if (!(mac in wifiDevices)) {
-        wifiDevices[mac] = {};
-        wifiDevices[mac].timer = new Timer(() => {
-            mqtt.publish(config.name + '/status/' + mac, false);
-        }).timeout(config.owrtwifiTimeout * 1000);
+function handleTimeout(mac) {
+    if (!(mac in timerList)) {
+        timerList[mac] = new Timer(() => {
+            mqtt.publish(config.name + '/status/' + mac, false, {retain: true});
+        });
     }
+
+    // (Re)start Timout
+    timerList[mac].reset().timeout(config.owrtwifiTimeout * 1000);
+
+    // Publish
+    mqtt.publish(config.name + '/status/' + mac, true, {retain: true});
 }
